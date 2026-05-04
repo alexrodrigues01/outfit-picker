@@ -1,4 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  query, 
+  where,
+  setDoc
+} from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 
 const WardrobeContext = createContext();
 
@@ -7,92 +20,107 @@ export const useWardrobe = () => useContext(WardrobeContext);
 const defaultCategories = ['Calças', 'Saias', 'Vestidos', 'Tops', 'Malhas', 'Acessórios'];
 
 export const WardrobeProvider = ({ children }) => {
-  const [items, setItems] = useState(() => {
-    const saved = localStorage.getItem('wardrobe_items');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { currentUser } = useAuth();
+  const [items, setItems] = useState([]);
+  const [outfits, setOutfits] = useState([]);
+  const [categories, setCategories] = useState(defaultCategories);
+  const [loading, setLoading] = useState(true);
 
-  const [outfits, setOutfits] = useState(() => {
-    const saved = localStorage.getItem('wardrobe_outfits');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('wardrobe_categories');
-    return saved ? JSON.parse(saved) : defaultCategories;
-  });
-
+  // Subscrever Peças
   useEffect(() => {
-    try {
-      localStorage.setItem('wardrobe_items', JSON.stringify(items));
-    } catch (e) {
-      if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
-        alert("⚠️ Espaço esgotado! Não tens mais espaço de armazenamento local disponível. Por favor, apaga peças antigas para adicionar novas.");
+    if (!currentUser) {
+      setItems([]);
+      return;
+    }
+    const q = query(collection(db, 'items'), where('userId', '==', currentUser.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const itemsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setItems(itemsData.sort((a, b) => b.createdAt - a.createdAt));
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, [currentUser]);
+
+  // Subscrever Outfits
+  useEffect(() => {
+    if (!currentUser) {
+      setOutfits([]);
+      return;
+    }
+    const q = query(collection(db, 'outfits'), where('userId', '==', currentUser.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const outfitsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setOutfits(outfitsData.sort((a, b) => b.createdAt - a.createdAt));
+    });
+    return unsubscribe;
+  }, [currentUser]);
+
+  // Subscrever Categorias
+  useEffect(() => {
+    if (!currentUser) {
+      setCategories(defaultCategories);
+      return;
+    }
+    const unsubscribe = onSnapshot(doc(db, 'user_categories', currentUser.uid), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().list) {
+        setCategories(docSnap.data().list);
+      } else {
+        setCategories(defaultCategories);
       }
-    }
-  }, [items]);
+    });
+    return unsubscribe;
+  }, [currentUser]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('wardrobe_outfits', JSON.stringify(outfits));
-    } catch (e) {
-      if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
-        alert("⚠️ Espaço esgotado! Não tens mais espaço de armazenamento local disponível. Por favor, apaga outfits antigos para adicionar novos.");
-      }
-    }
-  }, [outfits]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('wardrobe_categories', JSON.stringify(categories));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [categories]);
-
-  const addCategory = (category) => {
-    if (category && !categories.includes(category)) {
-      setCategories([...categories, category]);
-    }
+  const addCategory = async (category) => {
+    if (!currentUser || !category || categories.includes(category)) return;
+    const newList = [...categories, category];
+    await setDoc(doc(db, 'user_categories', currentUser.uid), { list: newList }, { merge: true });
   };
 
-  const addItem = (item) => {
-    const newItem = {
+  const addItem = async (item) => {
+    if (!currentUser) return;
+    await addDoc(collection(db, 'items'), {
       ...item,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    };
-    setItems((prev) => [newItem, ...prev]);
+      userId: currentUser.uid,
+      createdAt: Date.now()
+    });
   };
 
-  const removeItem = (id) => {
-    setItems((prev) => prev.filter(item => item.id !== id));
-    // Also remove from outfits that use this item
-    setOutfits((prev) => prev.map(outfit => ({
+  const removeItem = async (id) => {
+    if (!currentUser) return;
+    await deleteDoc(doc(db, 'items', id));
+    
+    // Remover a peça dos outfits que a contêm
+    outfits.forEach(async (outfit) => {
+      if (outfit.itemIds.includes(id)) {
+        const newItemIds = outfit.itemIds.filter(itemId => itemId !== id);
+        await updateDoc(doc(db, 'outfits', outfit.id), { itemIds: newItemIds });
+      }
+    });
+  };
+
+  const updateItem = async (id, updatedData) => {
+    if (!currentUser) return;
+    await updateDoc(doc(db, 'items', id), updatedData);
+  };
+
+  const addOutfit = async (outfit) => {
+    if (!currentUser) return;
+    await addDoc(collection(db, 'outfits'), {
       ...outfit,
-      itemIds: outfit.itemIds.filter(itemId => itemId !== id)
-    })));
+      userId: currentUser.uid,
+      createdAt: Date.now()
+    });
   };
 
-  const updateItem = (id, updatedData) => {
-    setItems((prev) => prev.map(item => item.id === id ? { ...item, ...updatedData } : item));
+  const removeOutfit = async (id) => {
+    if (!currentUser) return;
+    await deleteDoc(doc(db, 'outfits', id));
   };
 
-  const addOutfit = (outfit) => {
-    const newOutfit = {
-      ...outfit,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    };
-    setOutfits((prev) => [newOutfit, ...prev]);
-  };
-
-  const removeOutfit = (id) => {
-    setOutfits((prev) => prev.filter(outfit => outfit.id !== id));
-  };
-
-  const updateOutfit = (id, updatedData) => {
-    setOutfits((prev) => prev.map(outfit => outfit.id === id ? { ...outfit, ...updatedData } : outfit));
+  const updateOutfit = async (id, updatedData) => {
+    if (!currentUser) return;
+    await updateDoc(doc(db, 'outfits', id), updatedData);
   };
 
   const getItemsByCategory = (category) => {
@@ -112,6 +140,7 @@ export const WardrobeProvider = ({ children }) => {
       items,
       outfits,
       categories,
+      loading,
       addCategory,
       addItem,
       updateItem,

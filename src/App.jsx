@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { WardrobeProvider } from './context/WardrobeContext';
 import { Layout } from './components/Layout';
 import { Inventory } from './pages/Inventory';
 import { Outfits } from './pages/Outfits';
+import { Auth } from './pages/Auth';
 
-function App() {
+const MainApp = () => {
   const [activeTab, setActiveTab] = useState('inventory');
+  const { currentUser } = useAuth();
+
+  if (!currentUser) {
+    return <Auth />;
+  }
 
   return (
     <WardrobeProvider>
@@ -13,6 +20,14 @@ function App() {
         {activeTab === 'inventory' ? <Inventory /> : <Outfits />}
       </Layout>
     </WardrobeProvider>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }
 

@@ -4,7 +4,8 @@ import { GlassCard } from '../components/GlassCard';
 import { Modal } from '../components/Modal';
 import { ImageViewer } from '../components/ImageViewer';
 import { compressImage } from '../utils/imageCompressor';
-import { Plus, Trash2, Upload, Image as ImageIcon, Pencil } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Plus, Trash2, Upload, Image as ImageIcon, Pencil, LogOut } from 'lucide-react';
 import './Pages.css';
 
 export const Inventory = () => {
@@ -18,9 +19,10 @@ export const Inventory = () => {
   
   // Form State
   const [name, setName] = useState('');
-  const [category, setCategory] = useState(categories[0]);
+  const [category, setCategory] = useState(categories[0] || 'Tops');
   const [image, setImage] = useState(null);
   
+  const { logout } = useAuth();
   const fileInputRef = useRef(null);
 
   const items = getItemsByCategory(activeCategory);
@@ -74,11 +76,21 @@ export const Inventory = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="text-gradient">Guarda-Roupa</h1>
-        <button className="glass-button primary" onClick={openAddModal}>
-          <Plus size={20} />
-          <span>Adicionar</span>
-        </button>
+        <h1 className="text-gradient">O Meu Armário</h1>
+        <div className="header-actions">
+          <button className="glass-button primary" onClick={openAddModal}>
+            <Plus size={20} />
+            <span>Adicionar</span>
+          </button>
+          <button 
+            className="glass-button" 
+            onClick={logout}
+            title="Sair da Conta"
+            style={{ padding: '10px' }}
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="categories-scroll glass">

@@ -4,7 +4,8 @@ import { GlassCard } from '../components/GlassCard';
 import { Modal } from '../components/Modal';
 import { ImageViewer } from '../components/ImageViewer';
 import { compressImage } from '../utils/imageCompressor';
-import { Plus, Trash2, Upload, Filter, Sparkles, Pencil } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut } from 'lucide-react';
 import './Pages.css';
 
 export const Outfits = () => {
@@ -12,6 +13,7 @@ export const Outfits = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOutfitId, setEditingOutfitId] = useState(null);
   const [viewImage, setViewImage] = useState(null);
+  const { logout } = useAuth();
   
   // Filter state
   const [filterMode, setFilterMode] = useState(false);
@@ -90,12 +92,21 @@ export const Outfits = () => {
           <button 
             className={`glass-button ${filterMode ? 'active-filter' : ''}`}
             onClick={() => setFilterMode(!filterMode)}
+            style={{ padding: '10px' }}
           >
             <Filter size={20} />
           </button>
           <button className="glass-button primary" onClick={openAddModal}>
             <Plus size={20} />
             <span>Criar</span>
+          </button>
+          <button 
+            className="glass-button" 
+            onClick={logout}
+            title="Sair da Conta"
+            style={{ padding: '10px' }}
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </div>
