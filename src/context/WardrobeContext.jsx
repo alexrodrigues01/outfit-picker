@@ -23,15 +23,31 @@ export const WardrobeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    localStorage.setItem('wardrobe_items', JSON.stringify(items));
+    try {
+      localStorage.setItem('wardrobe_items', JSON.stringify(items));
+    } catch (e) {
+      if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
+        alert("⚠️ Espaço esgotado! Não tens mais espaço de armazenamento local disponível. Por favor, apaga peças antigas para adicionar novas.");
+      }
+    }
   }, [items]);
 
   useEffect(() => {
-    localStorage.setItem('wardrobe_outfits', JSON.stringify(outfits));
+    try {
+      localStorage.setItem('wardrobe_outfits', JSON.stringify(outfits));
+    } catch (e) {
+      if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
+        alert("⚠️ Espaço esgotado! Não tens mais espaço de armazenamento local disponível. Por favor, apaga outfits antigos para adicionar novos.");
+      }
+    }
   }, [outfits]);
 
   useEffect(() => {
-    localStorage.setItem('wardrobe_categories', JSON.stringify(categories));
+    try {
+      localStorage.setItem('wardrobe_categories', JSON.stringify(categories));
+    } catch (e) {
+      console.error(e);
+    }
   }, [categories]);
 
   const addCategory = (category) => {

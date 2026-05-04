@@ -3,6 +3,7 @@ import { useWardrobe } from '../context/WardrobeContext';
 import { GlassCard } from '../components/GlassCard';
 import { Modal } from '../components/Modal';
 import { ImageViewer } from '../components/ImageViewer';
+import { compressImage } from '../utils/imageCompressor';
 import { Plus, Trash2, Upload, Filter, Sparkles, Pencil } from 'lucide-react';
 import './Pages.css';
 
@@ -27,14 +28,15 @@ export const Outfits = () => {
     ? getOutfitsByItems(selectedFilterItems)
     : outfits;
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImage(file, 800, 800, 0.7);
+        setImage(compressedBase64);
+      } catch (err) {
+        console.error("Erro ao comprimir imagem:", err);
+      }
     }
   };
 

@@ -75,8 +75,13 @@ body {
   border: none;
 }
 
-.glass-button.primary:hover {
+.glass-button.primary:hover:not(:disabled) {
   background: #db2777; /* Pink 600 */
+}
+
+.glass-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .glass-input {
