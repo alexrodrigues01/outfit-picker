@@ -9,7 +9,7 @@ import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut, FolderPlus, X, 
 import './Pages.css';
 
 export const Outfits = () => {
-  const { outfits, items, categories, folders, addOutfit, removeOutfit, getOutfitsByItems, updateOutfit, addFolder, removeFolder } = useWardrobe();
+  const { outfits, items, categories, subcategories, folders, addOutfit, removeOutfit, getOutfitsByItems, updateOutfit, addFolder, removeFolder } = useWardrobe();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOutfitId, setEditingOutfitId] = useState(null);
   const [viewImage, setViewImage] = useState(null);
@@ -275,20 +275,45 @@ export const Outfits = () => {
             {categories.map(category => {
               const categoryItems = items.filter(item => item.category === category);
               if (categoryItems.length === 0) return null;
+              const catSubs = subcategories[category] || [];
+              const itemsWithSub = catSubs.length > 0 ? categoryItems.filter(item => item.subcategory && catSubs.includes(item.subcategory)) : [];
+              const itemsWithoutSub = catSubs.length > 0 ? categoryItems.filter(item => !item.subcategory || !catSubs.includes(item.subcategory)) : categoryItems;
               return (
                 <div key={`filter-cat-${category}`} className="category-group">
                   <h4 className="category-title">{category}</h4>
-                  <div className="filter-items-grid">
-                    {categoryItems.map(item => (
-                      <div 
-                        key={`filter-${item.id}`}
-                        className={`filter-item ${selectedFilterItems.includes(item.id) ? 'selected' : ''}`}
-                        onClick={() => toggleItemSelection(item.id, selectedFilterItems, setSelectedFilterItems)}
-                      >
-                        <img src={item.image} alt={item.name} />
+                  {catSubs.map(sub => {
+                    const subItems = categoryItems.filter(item => item.subcategory === sub);
+                    if (subItems.length === 0) return null;
+                    return (
+                      <div key={`filter-sub-${category}-${sub}`} className="subcategory-group">
+                        <span className="subcategory-label">{sub}</span>
+                        <div className="filter-items-grid">
+                          {subItems.map(item => (
+                            <div 
+                              key={`filter-${item.id}`}
+                              className={`filter-item ${selectedFilterItems.includes(item.id) ? 'selected' : ''}`}
+                              onClick={() => toggleItemSelection(item.id, selectedFilterItems, setSelectedFilterItems)}
+                            >
+                              <img src={item.image} alt={item.name} />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
+                  {itemsWithoutSub.length > 0 && (
+                    <div className="filter-items-grid">
+                      {itemsWithoutSub.map(item => (
+                        <div 
+                          key={`filter-${item.id}`}
+                          className={`filter-item ${selectedFilterItems.includes(item.id) ? 'selected' : ''}`}
+                          onClick={() => toggleItemSelection(item.id, selectedFilterItems, setSelectedFilterItems)}
+                        >
+                          <img src={item.image} alt={item.name} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -502,25 +527,54 @@ export const Outfits = () => {
                 {categories.map(category => {
                   const categoryItems = items.filter(item => item.category === category);
                   if (categoryItems.length === 0) return null;
+                  const catSubs = subcategories[category] || [];
+                  const itemsWithoutSub = catSubs.length > 0 ? categoryItems.filter(item => !item.subcategory || !catSubs.includes(item.subcategory)) : categoryItems;
                   return (
                     <div key={`select-cat-${category}`} className="category-group">
                       <h4 className="category-title">{category}</h4>
-                      <div className="select-items-grid">
-                        {categoryItems.map(item => (
-                          <div 
-                            key={`select-${item.id}`}
-                            className={`filter-item ${selectedItems.includes(item.id) ? 'selected' : ''}`}
-                            onClick={() => toggleItemSelection(item.id, selectedItems, setSelectedItems)}
-                          >
-                            <img src={item.image} alt={item.name} />
-                            {selectedItems.includes(item.id) && (
-                              <div className="selected-overlay">
-                                <div className="checkmark">✓</div>
-                              </div>
-                            )}
+                      {catSubs.map(sub => {
+                        const subItems = categoryItems.filter(item => item.subcategory === sub);
+                        if (subItems.length === 0) return null;
+                        return (
+                          <div key={`select-sub-${category}-${sub}`} className="subcategory-group">
+                            <span className="subcategory-label">{sub}</span>
+                            <div className="select-items-grid">
+                              {subItems.map(item => (
+                                <div 
+                                  key={`select-${item.id}`}
+                                  className={`filter-item ${selectedItems.includes(item.id) ? 'selected' : ''}`}
+                                  onClick={() => toggleItemSelection(item.id, selectedItems, setSelectedItems)}
+                                >
+                                  <img src={item.image} alt={item.name} />
+                                  {selectedItems.includes(item.id) && (
+                                    <div className="selected-overlay">
+                                      <div className="checkmark">✓</div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
+                      {itemsWithoutSub.length > 0 && (
+                        <div className="select-items-grid">
+                          {itemsWithoutSub.map(item => (
+                            <div 
+                              key={`select-${item.id}`}
+                              className={`filter-item ${selectedItems.includes(item.id) ? 'selected' : ''}`}
+                              onClick={() => toggleItemSelection(item.id, selectedItems, setSelectedItems)}
+                            >
+                              <img src={item.image} alt={item.name} />
+                              {selectedItems.includes(item.id) && (
+                                <div className="selected-overlay">
+                                  <div className="checkmark">✓</div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

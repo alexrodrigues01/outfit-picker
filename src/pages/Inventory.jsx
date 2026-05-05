@@ -30,11 +30,14 @@ const PRESET_COLORS = [
 ];
 
 export const Inventory = () => {
-  const { categories, items, getItemsByCategory, addItem, removeItem, addCategory, updateItem } = useWardrobe();
+  const { categories, subcategories, items, getItemsByCategory, addItem, removeItem, addCategory, addSubcategory, updateItem } = useWardrobe();
   const [activeCategory, setActiveCategory] = useState('Todas');
+  const [activeSubcategory, setActiveSubcategory] = useState('Todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isSubcategoryModalOpen, setIsSubcategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [editingItemId, setEditingItemId] = useState(null);
   const [viewImage, setViewImage] = useState(null);
   
@@ -45,6 +48,7 @@ export const Inventory = () => {
   // Form State
   const [name, setName] = useState('');
   const [category, setCategory] = useState(categories[0] || 'Tops');
+  const [subcategory, setSubcategory] = useState('');
   const [image, setImage] = useState(null);
   const [color, setColor] = useState('');
   const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
@@ -52,6 +56,17 @@ export const Inventory = () => {
   
   const { logout } = useAuth();
   const fileInputRef = useRef(null);
+
+  // Subcategories for the active category
+  const activeSubcategories = useMemo(() => {
+    if (activeCategory === 'Todas') return [];
+    return subcategories[activeCategory] || [];
+  }, [activeCategory, subcategories]);
+
+  // Subcategories for the form's selected category
+  const formSubcategories = useMemo(() => {
+    return subcategories[category] || [];
+  }, [category, subcategories]);
 
   // Get unique colors from all items
   const availableColors = useMemo(() => {
@@ -64,14 +79,17 @@ export const Inventory = () => {
     return Array.from(colorSet.keys());
   }, [items]);
 
-  // Filter items by category and color
+  // Filter items by category, subcategory, and color
   const filteredItems = useMemo(() => {
     let result = getItemsByCategory(activeCategory);
+    if (activeSubcategory !== 'Todas' && activeCategory !== 'Todas') {
+      result = result.filter(item => item.subcategory === activeSubcategory);
+    }
     if (colorFilterMode && selectedFilterColors.length > 0) {
       result = result.filter(item => item.color && selectedFilterColors.includes(item.color));
     }
     return result;
-  }, [activeCategory, colorFilterMode, selectedFilterColors, getItemsByCategory]);
+  }, [activeCategory, activeSubcategory, colorFilterMode, selectedFilterColors, getItemsByCategory]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -90,9 +108,9 @@ export const Inventory = () => {
     if (!name || !image) return;
     
     if (editingItemId) {
-      updateItem(editingItemId, { name, category, image, color: color || null });
+      updateItem(editingItemId, { name, category, subcategory: subcategory || null, image, color: color || null });
     } else {
-      addItem({ name, category, image, color: color || null });
+      addItem({ name, category, subcategory: subcategory || null, image, color: color || null });
     }
     setIsModalOpen(false);
     
@@ -100,6 +118,7 @@ export const Inventory = () => {
     setEditingItemId(null);
     setName('');
     setCategory(categories[0]);
+    setSubcategory('');
     setImage(null);
     setColor('');
     setShowCustomColorPicker(false);
@@ -109,6 +128,7 @@ export const Inventory = () => {
     setEditingItemId(null);
     setName('');
     setCategory(categories[0]);
+    setSubcategory('');
     setImage(null);
     setColor('');
     setShowCustomColorPicker(false);
@@ -119,6 +139,7 @@ export const Inventory = () => {
     setEditingItemId(item.id);
     setName(item.name);
     setCategory(item.category);
+    setSubcategory(item.subcategory || '');
     setImage(item.image);
     setColor(item.color || '');
     setShowCustomColorPicker(false);
@@ -136,6 +157,12 @@ export const Inventory = () => {
   const getColorName = (hex) => {
     const preset = PRESET_COLORS.find(c => c.hex === hex);
     return preset ? preset.name : hex;
+  };
+
+  // Reset subcategory filter when changing category
+  const handleCategoryChange = (cat) => {
+    setActiveCategory(cat);
+    setActiveSubcategory('Todas');
   };
 
   return (
@@ -169,7 +196,7 @@ export const Inventory = () => {
       <div className="categories-scroll glass">
         <button 
           className={`category-pill ${activeCategory === 'Todas' ? 'active' : ''}`}
-          onClick={() => setActiveCategory('Todas')}
+          onClick={() => handleCategoryChange('Todas')}
         >
           Todas
         </button>
@@ -177,7 +204,7 @@ export const Inventory = () => {
           <button 
             key={cat}
             className={`category-pill ${activeCategory === cat ? 'active' : ''}`}
-            onClick={() => setActiveCategory(cat)}
+            onClick={() => handleCategoryChange(cat)}
           >
             {cat}
           </button>
@@ -190,6 +217,27 @@ export const Inventory = () => {
           <Plus size={14} /> Nova
         </button>
       </div>
+
+      {/* Subcategory filter - only show when a specific category is active */}
+      {activeCategory !== 'Todas' && activeSubcategories.length > 0 && (
+        <div className="subcategories-scroll">
+          <button 
+            className={`subcategory-pill ${activeSubcategory === 'Todas' ? 'active' : ''}`}
+            onClick={() => setActiveSubcategory('Todas')}
+          >
+            Todas
+          </button>
+          {activeSubcategories.map(sub => (
+            <button
+              key={sub}
+              className={`subcategory-pill ${activeSubcategory === sub ? 'active' : ''}`}
+              onClick={() => setActiveSubcategory(sub)}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Color Filter */}
       {colorFilterMode && (
@@ -232,7 +280,9 @@ export const Inventory = () => {
           <p>
             {colorFilterMode && selectedFilterColors.length > 0
               ? "Nenhuma peça encontrada com estas cores."
-              : "Ainda não tens peças nesta categoria."}
+              : activeSubcategory !== 'Todas'
+                ? `Nenhuma peça na subcategoria "${activeSubcategory}".`
+                : "Ainda não tens peças nesta categoria."}
           </p>
         </div>
       ) : (
@@ -275,7 +325,12 @@ export const Inventory = () => {
               </div>
               <div className="item-info">
                 <h3>{item.name}</h3>
-                <span className="item-category">{item.category}</span>
+                <div className="item-tags">
+                  <span className="item-category">{item.category}</span>
+                  {item.subcategory && (
+                    <span className="item-subcategory">{item.subcategory}</span>
+                  )}
+                </div>
               </div>
             </GlassCard>
           ))}
@@ -326,12 +381,37 @@ export const Inventory = () => {
             <select 
               className="glass-input glass-select"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => { setCategory(e.target.value); setSubcategory(''); }}
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+          </div>
+
+          {/* Subcategory */}
+          <div className="form-group">
+            <label>Subcategoria</label>
+            <div className="subcategory-form-row">
+              <select
+                className="glass-input glass-select"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+              >
+                <option value="">Nenhuma</option>
+                {formSubcategories.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="glass-button subcategory-add-btn"
+                onClick={() => setIsSubcategoryModalOpen(true)}
+                title="Nova subcategoria"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Color Picker */}
@@ -409,7 +489,7 @@ export const Inventory = () => {
           e.preventDefault();
           if (newCategoryName.trim()) {
             addCategory(newCategoryName.trim());
-            setActiveCategory(newCategoryName.trim());
+            handleCategoryChange(newCategoryName.trim());
             if (categories.length === 0) setCategory(newCategoryName.trim());
             setIsCategoryModalOpen(false);
             setNewCategoryName('');
@@ -435,6 +515,47 @@ export const Inventory = () => {
               Cancelar
             </button>
             <button type="submit" className="glass-button primary w-full" disabled={!newCategoryName.trim()}>
+              Adicionar
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Subcategory Modal */}
+      <Modal
+        isOpen={isSubcategoryModalOpen}
+        onClose={() => setIsSubcategoryModalOpen(false)}
+        title={`Nova Subcategoria para ${category}`}
+      >
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (newSubcategoryName.trim()) {
+            addSubcategory(category, newSubcategoryName.trim());
+            setSubcategory(newSubcategoryName.trim());
+            setIsSubcategoryModalOpen(false);
+            setNewSubcategoryName('');
+          }
+        }} className="add-form">
+          <div className="form-group">
+            <label>Nome da Subcategoria</label>
+            <input 
+              type="text" 
+              className="glass-input" 
+              placeholder="Ex: Jeans, Chinos, Leggings..."
+              value={newSubcategoryName}
+              onChange={(e) => setNewSubcategoryName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-actions" style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+            <button 
+              type="button" 
+              className="glass-button w-full"
+              onClick={() => setIsSubcategoryModalOpen(false)}
+            >
+              Cancelar
+            </button>
+            <button type="submit" className="glass-button primary w-full" disabled={!newSubcategoryName.trim()}>
               Adicionar
             </button>
           </div>

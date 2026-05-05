@@ -25,6 +25,7 @@ export const WardrobeProvider = ({ children }) => {
   const [outfits, setOutfits] = useState([]);
   const [categories, setCategories] = useState(defaultCategories);
   const [folders, setFolders] = useState([]);
+  const [subcategories, setSubcategories] = useState({});
   const [loading, setLoading] = useState(true);
 
   // Subscrever Peças
@@ -88,10 +89,34 @@ export const WardrobeProvider = ({ children }) => {
     return unsubscribe;
   }, [currentUser]);
 
+  // Subscrever Subcategorias
+  useEffect(() => {
+    if (!currentUser) {
+      setSubcategories({});
+      return;
+    }
+    const unsubscribe = onSnapshot(doc(db, 'user_subcategories', currentUser.uid), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().map) {
+        setSubcategories(docSnap.data().map);
+      } else {
+        setSubcategories({});
+      }
+    });
+    return unsubscribe;
+  }, [currentUser]);
+
   const addCategory = async (category) => {
     if (!currentUser || !category || categories.includes(category)) return;
     const newList = [...categories, category];
     await setDoc(doc(db, 'user_categories', currentUser.uid), { list: newList }, { merge: true });
+  };
+
+  const addSubcategory = async (category, subcategory) => {
+    if (!currentUser || !category || !subcategory) return;
+    const currentSubs = subcategories[category] || [];
+    if (currentSubs.includes(subcategory)) return;
+    const newMap = { ...subcategories, [category]: [...currentSubs, subcategory] };
+    await setDoc(doc(db, 'user_subcategories', currentUser.uid), { map: newMap }, { merge: true });
   };
 
   const addFolder = async (folderName) => {
@@ -180,9 +205,11 @@ export const WardrobeProvider = ({ children }) => {
       items,
       outfits,
       categories,
+      subcategories,
       folders,
       loading,
       addCategory,
+      addSubcategory,
       addFolder,
       removeFolder,
       addItem,
