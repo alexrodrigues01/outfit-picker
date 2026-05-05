@@ -9,7 +9,7 @@ import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut } from 'lucide-r
 import './Pages.css';
 
 export const Outfits = () => {
-  const { outfits, items, addOutfit, removeOutfit, getOutfitsByItems, updateOutfit } = useWardrobe();
+  const { outfits, items, categories, addOutfit, removeOutfit, getOutfitsByItems, updateOutfit } = useWardrobe();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOutfitId, setEditingOutfitId] = useState(null);
   const [viewImage, setViewImage] = useState(null);
@@ -115,16 +115,43 @@ export const Outfits = () => {
         <div className="filter-section glass animate-fade-in">
           <h3>Filtrar por Peças:</h3>
           <p className="text-sm">Seleciona peças para ver em que outfits são usadas.</p>
-          <div className="filter-items-grid">
-            {items.map(item => (
-              <div 
-                key={`filter-${item.id}`}
-                className={`filter-item ${selectedFilterItems.includes(item.id) ? 'selected' : ''}`}
-                onClick={() => toggleItemSelection(item.id, selectedFilterItems, setSelectedFilterItems)}
-              >
-                <img src={item.image} alt={item.name} />
+          <div className="filter-items-container">
+            {categories.map(category => {
+              const categoryItems = items.filter(item => item.category === category);
+              if (categoryItems.length === 0) return null;
+              return (
+                <div key={`filter-cat-${category}`} className="category-group">
+                  <h4 className="category-title">{category}</h4>
+                  <div className="filter-items-grid">
+                    {categoryItems.map(item => (
+                      <div 
+                        key={`filter-${item.id}`}
+                        className={`filter-item ${selectedFilterItems.includes(item.id) ? 'selected' : ''}`}
+                        onClick={() => toggleItemSelection(item.id, selectedFilterItems, setSelectedFilterItems)}
+                      >
+                        <img src={item.image} alt={item.name} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {items.filter(item => !categories.includes(item.category)).length > 0 && (
+              <div key="filter-cat-others" className="category-group">
+                <h4 className="category-title">Outros</h4>
+                <div className="filter-items-grid">
+                  {items.filter(item => !categories.includes(item.category)).map(item => (
+                    <div 
+                      key={`filter-${item.id}`}
+                      className={`filter-item ${selectedFilterItems.includes(item.id) ? 'selected' : ''}`}
+                      onClick={() => toggleItemSelection(item.id, selectedFilterItems, setSelectedFilterItems)}
+                    >
+                      <img src={item.image} alt={item.name} />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
           </div>
           {selectedFilterItems.length > 0 && (
             <button 
@@ -244,21 +271,53 @@ export const Outfits = () => {
                 Adiciona peças no guarda-roupa primeiro.
               </p>
             ) : (
-              <div className="select-items-grid">
-                {items.map(item => (
-                  <div 
-                    key={`select-${item.id}`}
-                    className={`filter-item ${selectedItems.includes(item.id) ? 'selected' : ''}`}
-                    onClick={() => toggleItemSelection(item.id, selectedItems, setSelectedItems)}
-                  >
-                    <img src={item.image} alt={item.name} />
-                    {selectedItems.includes(item.id) && (
-                      <div className="selected-overlay">
-                        <div className="checkmark">✓</div>
+              <div className="select-items-container">
+                {categories.map(category => {
+                  const categoryItems = items.filter(item => item.category === category);
+                  if (categoryItems.length === 0) return null;
+                  return (
+                    <div key={`select-cat-${category}`} className="category-group">
+                      <h4 className="category-title">{category}</h4>
+                      <div className="select-items-grid">
+                        {categoryItems.map(item => (
+                          <div 
+                            key={`select-${item.id}`}
+                            className={`filter-item ${selectedItems.includes(item.id) ? 'selected' : ''}`}
+                            onClick={() => toggleItemSelection(item.id, selectedItems, setSelectedItems)}
+                          >
+                            <img src={item.image} alt={item.name} />
+                            {selectedItems.includes(item.id) && (
+                              <div className="selected-overlay">
+                                <div className="checkmark">✓</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  );
+                })}
+                {items.filter(item => !categories.includes(item.category)).length > 0 && (
+                  <div key="select-cat-others" className="category-group">
+                    <h4 className="category-title">Outros</h4>
+                    <div className="select-items-grid">
+                      {items.filter(item => !categories.includes(item.category)).map(item => (
+                        <div 
+                          key={`select-${item.id}`}
+                          className={`filter-item ${selectedItems.includes(item.id) ? 'selected' : ''}`}
+                          onClick={() => toggleItemSelection(item.id, selectedItems, setSelectedItems)}
+                        >
+                          <img src={item.image} alt={item.name} />
+                          {selectedItems.includes(item.id) && (
+                            <div className="selected-overlay">
+                              <div className="checkmark">✓</div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
