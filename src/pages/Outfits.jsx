@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useWardrobe } from '../context/WardrobeContext';
 import { GlassCard } from '../components/GlassCard';
 import { Modal } from '../components/Modal';
 import { ImageViewer } from '../components/ImageViewer';
 import { compressImage } from '../utils/imageCompressor';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut, FolderPlus, X } from 'lucide-react';
+import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut, FolderPlus, X, Palette } from 'lucide-react';
 import './Pages.css';
 
 export const Outfits = () => {
@@ -23,6 +23,8 @@ export const Outfits = () => {
   // Filter state
   const [filterMode, setFilterMode] = useState(false);
   const [selectedFilterItems, setSelectedFilterItems] = useState([]);
+  const [colorFilterMode, setColorFilterMode] = useState(false);
+  const [selectedFilterColors, setSelectedFilterColors] = useState([]);
   
   // Form State
   const [name, setName] = useState('');
@@ -33,7 +35,18 @@ export const Outfits = () => {
   const fileInputRef = useRef(null);
   const newFolderInputRef = useRef(null);
 
-  // Get outfits filtered by folder first, then by items if filter mode is on
+  // Get unique colors from all items for color filter
+  const availableColors = useMemo(() => {
+    const colorSet = new Map();
+    items.forEach(item => {
+      if (item.color) {
+        colorSet.set(item.color, true);
+      }
+    });
+    return Array.from(colorSet.keys());
+  }, [items]);
+
+  // Get outfits filtered by folder, items, and colors
   const getFilteredOutfits = () => {
     let result = outfits;
     
@@ -49,6 +62,18 @@ export const Outfits = () => {
       result = result.filter(outfit => 
         selectedFilterItems.every(id => outfit.itemIds.includes(id))
       );
+    }
+    
+    // Filter by colors - show outfits that contain at least one item with each selected color
+    if (colorFilterMode && selectedFilterColors.length > 0) {
+      result = result.filter(outfit => {
+        const outfitItemColors = outfit.itemIds
+          .map(id => items.find(i => i.id === id))
+          .filter(Boolean)
+          .map(i => i.color)
+          .filter(Boolean);
+        return selectedFilterColors.every(c => outfitItemColors.includes(c));
+      });
     }
     
     return result;
@@ -133,6 +158,14 @@ export const Outfits = () => {
     ? 'Todos' 
     : folders.find(f => f.id === activeFolder)?.name || 'Todos';
 
+  const toggleColorFilter = (hex) => {
+    if (selectedFilterColors.includes(hex)) {
+      setSelectedFilterColors(selectedFilterColors.filter(c => c !== hex));
+    } else {
+      setSelectedFilterColors([...selectedFilterColors, hex]);
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -142,8 +175,17 @@ export const Outfits = () => {
             className={`glass-button ${filterMode ? 'active-filter' : ''}`}
             onClick={() => setFilterMode(!filterMode)}
             style={{ padding: '10px' }}
+            title="Filtrar por peças"
           >
             <Filter size={20} />
+          </button>
+          <button 
+            className={`glass-button ${colorFilterMode ? 'active-filter' : ''}`}
+            onClick={() => setColorFilterMode(!colorFilterMode)}
+            style={{ padding: '10px' }}
+            title="Filtrar por cor"
+          >
+            <Palette size={20} />
           </button>
           <button className="glass-button primary" onClick={openAddModal}>
             <Plus size={20} />
@@ -271,6 +313,40 @@ export const Outfits = () => {
             <button 
               className="clear-filter"
               onClick={() => setSelectedFilterItems([])}
+            >
+              Limpar Filtros
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Color Filter */}
+      {colorFilterMode && (
+        <div className="filter-section glass animate-fade-in">
+          <h3>Filtrar por Cor:</h3>
+          <p className="text-sm">Seleciona cores para encontrar outfits que contenham peças dessas cores.</p>
+          <div className="color-filter-grid">
+            {availableColors.length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Adiciona cores às tuas peças para poderes filtrar.
+              </p>
+            ) : (
+              availableColors.map(hex => (
+                <button
+                  key={`outfit-color-filter-${hex}`}
+                  className={`color-filter-dot ${selectedFilterColors.includes(hex) ? 'selected' : ''}`}
+                  style={{ '--dot-color': hex }}
+                  onClick={() => toggleColorFilter(hex)}
+                >
+                  {selectedFilterColors.includes(hex) && <span className="color-check">✓</span>}
+                </button>
+              ))
+            )}
+          </div>
+          {selectedFilterColors.length > 0 && (
+            <button 
+              className="clear-filter"
+              onClick={() => setSelectedFilterColors([])}
             >
               Limpar Filtros
             </button>

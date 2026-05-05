@@ -572,3 +572,128 @@
   font-size: 0.75rem;
   font-weight: bold;
 }
+
+/* Color Picker & Filter */
+.color-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  background: var(--dot-color);
+  transition: all 0.2s ease;
+  position: relative;
+  padding: 0;
+}
+
+.color-dot:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.color-dot.selected {
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 0 3px var(--accent-pink-light);
+  transform: scale(1.1);
+}
+
+.custom-color-dot {
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red) !important;
+}
+
+.custom-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.custom-color-input {
+  width: 48px;
+  height: 36px;
+  border: 2px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 2px;
+  background: transparent;
+}
+
+.custom-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.custom-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+.color-label-preview {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-left: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Color dot on item card */
+.item-color-dot {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+/* Color Filter Grid */
+.color-filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.color-filter-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  background: var(--dot-color);
+  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.color-filter-dot:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.color-filter-dot.selected {
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 0 3px var(--accent-pink-light);
+  transform: scale(1.1);
+}
+
+.color-check {
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
