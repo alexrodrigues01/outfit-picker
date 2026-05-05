@@ -24,6 +24,7 @@ export const WardrobeProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [outfits, setOutfits] = useState([]);
   const [categories, setCategories] = useState(defaultCategories);
+  const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Subscrever Peças
@@ -71,10 +72,49 @@ export const WardrobeProvider = ({ children }) => {
     return unsubscribe;
   }, [currentUser]);
 
+  // Subscrever Pastas de Outfits
+  useEffect(() => {
+    if (!currentUser) {
+      setFolders([]);
+      return;
+    }
+    const unsubscribe = onSnapshot(doc(db, 'user_outfit_folders', currentUser.uid), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().list) {
+        setFolders(docSnap.data().list);
+      } else {
+        setFolders([]);
+      }
+    });
+    return unsubscribe;
+  }, [currentUser]);
+
   const addCategory = async (category) => {
     if (!currentUser || !category || categories.includes(category)) return;
     const newList = [...categories, category];
     await setDoc(doc(db, 'user_categories', currentUser.uid), { list: newList }, { merge: true });
+  };
+
+  const addFolder = async (folderName) => {
+    if (!currentUser || !folderName) return;
+    const exists = folders.some(f => f.name === folderName);
+    if (exists) return;
+    const newFolder = { id: Date.now().toString(), name: folderName };
+    const newList = [...folders, newFolder];
+    await setDoc(doc(db, 'user_outfit_folders', currentUser.uid), { list: newList }, { merge: true });
+  };
+
+  const removeFolder = async (folderId) => {
+    if (!currentUser) return;
+    const newList = folders.filter(f => f.id !== folderId);
+    await setDoc(doc(db, 'user_outfit_folders', currentUser.uid), { list: newList }, { merge: true });
+    
+    // Remover a pasta dos outfits que a contêm
+    outfits.forEach(async (outfit) => {
+      if (outfit.folderIds && outfit.folderIds.includes(folderId)) {
+        const newFolderIds = outfit.folderIds.filter(id => id !== folderId);
+        await updateDoc(doc(db, 'outfits', outfit.id), { folderIds: newFolderIds });
+      }
+    });
   };
 
   const addItem = async (item) => {
@@ -140,8 +180,11 @@ export const WardrobeProvider = ({ children }) => {
       items,
       outfits,
       categories,
+      folders,
       loading,
       addCategory,
+      addFolder,
+      removeFolder,
       addItem,
       updateItem,
       removeItem,

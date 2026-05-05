@@ -5,15 +5,20 @@ import { Modal } from '../components/Modal';
 import { ImageViewer } from '../components/ImageViewer';
 import { compressImage } from '../utils/imageCompressor';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut } from 'lucide-react';
+import { Plus, Trash2, Upload, Filter, Sparkles, Pencil, LogOut, FolderPlus, X } from 'lucide-react';
 import './Pages.css';
 
 export const Outfits = () => {
-  const { outfits, items, categories, addOutfit, removeOutfit, getOutfitsByItems, updateOutfit } = useWardrobe();
+  const { outfits, items, categories, folders, addOutfit, removeOutfit, getOutfitsByItems, updateOutfit, addFolder, removeFolder } = useWardrobe();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOutfitId, setEditingOutfitId] = useState(null);
   const [viewImage, setViewImage] = useState(null);
   const { logout } = useAuth();
+  
+  // Folder state
+  const [activeFolder, setActiveFolder] = useState('all'); // 'all' or folder id
+  const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
   
   // Filter state
   const [filterMode, setFilterMode] = useState(false);
@@ -23,12 +28,33 @@ export const Outfits = () => {
   const [name, setName] = useState('');
   const [image, setImage] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedFolderIds, setSelectedFolderIds] = useState([]);
   
   const fileInputRef = useRef(null);
+  const newFolderInputRef = useRef(null);
 
-  const displayedOutfits = filterMode && selectedFilterItems.length > 0
-    ? getOutfitsByItems(selectedFilterItems)
-    : outfits;
+  // Get outfits filtered by folder first, then by items if filter mode is on
+  const getFilteredOutfits = () => {
+    let result = outfits;
+    
+    // Filter by folder
+    if (activeFolder !== 'all') {
+      result = result.filter(outfit => 
+        outfit.folderIds && outfit.folderIds.includes(activeFolder)
+      );
+    }
+    
+    // Filter by items
+    if (filterMode && selectedFilterItems.length > 0) {
+      result = result.filter(outfit => 
+        selectedFilterItems.every(id => outfit.itemIds.includes(id))
+      );
+    }
+    
+    return result;
+  };
+
+  const displayedOutfits = getFilteredOutfits();
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -47,9 +73,9 @@ export const Outfits = () => {
     if (!name || !image) return;
     
     if (editingOutfitId) {
-      updateOutfit(editingOutfitId, { name, image, itemIds: selectedItems });
+      updateOutfit(editingOutfitId, { name, image, itemIds: selectedItems, folderIds: selectedFolderIds });
     } else {
-      addOutfit({ name, image, itemIds: selectedItems });
+      addOutfit({ name, image, itemIds: selectedItems, folderIds: selectedFolderIds });
     }
     setIsModalOpen(false);
     
@@ -58,6 +84,7 @@ export const Outfits = () => {
     setName('');
     setImage(null);
     setSelectedItems([]);
+    setSelectedFolderIds([]);
   };
 
   const openAddModal = () => {
@@ -65,6 +92,8 @@ export const Outfits = () => {
     setName('');
     setImage(null);
     setSelectedItems([]);
+    // Pre-select current folder if viewing one
+    setSelectedFolderIds(activeFolder !== 'all' ? [activeFolder] : []);
     setIsModalOpen(true);
   };
 
@@ -73,6 +102,7 @@ export const Outfits = () => {
     setName(outfit.name);
     setImage(outfit.image);
     setSelectedItems(outfit.itemIds);
+    setSelectedFolderIds(outfit.folderIds || []);
     setIsModalOpen(true);
   };
 
@@ -83,6 +113,25 @@ export const Outfits = () => {
       setList([...list, id]);
     }
   };
+
+  const handleAddFolder = () => {
+    if (newFolderName.trim()) {
+      addFolder(newFolderName.trim());
+      setNewFolderName('');
+      setShowNewFolderInput(false);
+    }
+  };
+
+  const handleDeleteFolder = (folderId) => {
+    if (activeFolder === folderId) {
+      setActiveFolder('all');
+    }
+    removeFolder(folderId);
+  };
+
+  const activeFolderName = activeFolder === 'all' 
+    ? 'Todos' 
+    : folders.find(f => f.id === activeFolder)?.name || 'Todos';
 
   return (
     <div className="page-container">
@@ -108,6 +157,71 @@ export const Outfits = () => {
           >
             <LogOut size={20} />
           </button>
+        </div>
+      </div>
+
+      {/* Folders Navigation */}
+      <div className="folders-bar glass">
+        <div className="folders-scroll">
+          <button 
+            className={`folder-pill ${activeFolder === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveFolder('all')}
+          >
+            Todos
+          </button>
+          {folders.map(folder => (
+            <div key={folder.id} className="folder-pill-wrapper">
+              <button 
+                className={`folder-pill ${activeFolder === folder.id ? 'active' : ''}`}
+                onClick={() => setActiveFolder(folder.id)}
+              >
+                {folder.name}
+              </button>
+              {activeFolder === folder.id && (
+                <button 
+                  className="folder-delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteFolder(folder.id);
+                  }}
+                  title="Apagar pasta"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          ))}
+          {showNewFolderInput ? (
+            <div className="new-folder-input-wrapper">
+              <input
+                ref={newFolderInputRef}
+                type="text"
+                className="new-folder-input"
+                placeholder="Nome da pasta..."
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddFolder();
+                  if (e.key === 'Escape') { setShowNewFolderInput(false); setNewFolderName(''); }
+                }}
+                autoFocus
+              />
+              <button className="folder-pill add-folder-confirm" onClick={handleAddFolder}>
+                ✓
+              </button>
+              <button className="folder-pill add-folder-cancel" onClick={() => { setShowNewFolderInput(false); setNewFolderName(''); }}>
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button 
+              className="folder-pill add-folder-btn"
+              onClick={() => setShowNewFolderInput(true)}
+              title="Nova Pasta"
+            >
+              <FolderPlus size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -170,7 +284,9 @@ export const Outfits = () => {
           <p>
             {filterMode 
               ? "Nenhum outfit encontrado com estas peças." 
-              : "Ainda não tens outfits guardados."}
+              : activeFolder !== 'all'
+                ? `Nenhum outfit na pasta "${activeFolderName}".`
+                : "Ainda não tens outfits guardados."}
           </p>
         </div>
       ) : (
@@ -206,6 +322,16 @@ export const Outfits = () => {
               </div>
               <div className="item-info">
                 <h3>{outfit.name}</h3>
+                {outfit.folderIds && outfit.folderIds.length > 0 && (
+                  <div className="outfit-folder-tags">
+                    {outfit.folderIds.map(fId => {
+                      const folder = folders.find(f => f.id === fId);
+                      return folder ? (
+                        <span key={fId} className="folder-tag">{folder.name}</span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
                 <div className="outfit-items-preview">
                   {outfit.itemIds.slice(0, 4).map(itemId => {
                     const item = items.find(i => i.id === itemId);
@@ -262,6 +388,31 @@ export const Outfits = () => {
               onChange={(e) => setName(e.target.value)}
               required
             />
+          </div>
+
+          {/* Folder selection */}
+          <div className="form-group">
+            <label>Pastas ({selectedFolderIds.length})</label>
+            {folders.length === 0 ? (
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Cria pastas primeiro para organizar os teus outfits.
+              </p>
+            ) : (
+              <div className="folder-select-grid">
+                {folders.map(folder => (
+                  <div 
+                    key={`folder-select-${folder.id}`}
+                    className={`folder-select-item ${selectedFolderIds.includes(folder.id) ? 'selected' : ''}`}
+                    onClick={() => toggleItemSelection(folder.id, selectedFolderIds, setSelectedFolderIds)}
+                  >
+                    {folder.name}
+                    {selectedFolderIds.includes(folder.id) && (
+                      <span className="folder-check">✓</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
